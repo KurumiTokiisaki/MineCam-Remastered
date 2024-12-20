@@ -21,14 +21,24 @@ class ImageProcessor:
                     col += 1
                     if (y % self.blkSize) == 0:
                         if x == 0:  # every new row of blocks
+                            if y != 0:  # no previous row in the first iteration
+                                self.__averageColors()
                             self.processedPixels.append([])
                         self.processedPixels[-1].append([0, 0, 0])  # every new block
                 currentPixel = self.rawPixels[x, y]
                 for po in range(3):
-                    self.processedPixels[-1][col][po] += currentPixel[po] / (self.blkSize ** 2)
+                    self.processedPixels[-1][col][po] += currentPixel[po]
+        self.__averageColors()  # average colors of blocks for the final row
         print(self.imageSize)
         print(len(self.processedPixels[-1]), len(self.processedPixels))
         print(self.processedPixels)
+
+    def __averageColors(self):
+        prevRow = self.processedPixels[-1]
+        for b in range(len(prevRow)):
+            for c in range(3):
+                prevRow[b][c] /= self.blkSize ** 2
+        self.processedPixels[-1] = prevRow
 
 
 myImage = ImageProcessor(r"images\raw\IMG_2408.jpeg")
