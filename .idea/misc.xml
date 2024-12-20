@@ -3,8 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.11" />
   </component>
-  <component name="GithubDefaultAccount">
-    <option name="defaultAccountId" value="a3fa2534-e1ae-4757-973f-614b02c9c0d3" />
-  </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12 (MineCam-Remastered)" project-jdk-type="Python SDK" />
 </project>
