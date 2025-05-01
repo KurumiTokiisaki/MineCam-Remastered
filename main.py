@@ -1,11 +1,36 @@
-from os.path import split
-
+import os
+import math
 from PIL import Image
 
-loadingBar = False
-# fileName = "Screenshot 2024-12-22 150258.png"
-fileName = "cat-close-up-of-side-profile"
-processedFileName = "cat-close-up-of-side-profile"
+loadingBar = True
+fileExt = ""
+
+while True:
+    try:
+        fileList = ""
+        for p in os.listdir(r"images\raw"):
+            if not p.startswith("blockTextures"):
+                fileList += f"{p} | "
+        print(f"| {fileList}")
+        fileName = input("Enter exact name of one of the files to open: ")
+        fileExt = fileName.split('.')[1]
+        fileName = fileName.split('.')[0]
+        temp = open(fr"images\raw\{fileName}.{fileExt}")
+        break
+    except FileNotFoundError:
+        print("File not found!")
+
+processedFileName = fileName
+saveFileName = f"{processedFileName}"
+blkDat = []
+textureRes = Image.open(r"images\raw\blockTextures\dirt.png").size[0]
+
+while True:
+    try:
+        blkSize = abs(int(input("Enter block size: ")))
+        break
+    except ValueError:
+        print("Please enter an integer!")
 
 
 def listToStr(listIn):
@@ -15,12 +40,37 @@ def listToStr(listIn):
     return strOut
 
 
+def loadBlocks():
+    global blkDat
+    blkFile = open(r"images/processed/blockTextures.txt", 'r')
+    blkDat = blkFile.readlines()
+    for i in range(len(blkDat)):
+        blkDat[i] = blkDat[i].replace("\n", '')
+        blkDat[i] = blkDat[i].split("--")
+        blkDat[i][1] = blkDat[i][1].replace('[', '')
+        blkDat[i][1] = blkDat[i][1].replace(']', '')
+        blkDat[i][1] = blkDat[i][1].split(', ')
+        for c in range(3):
+            blkDat[i][1][c] = int(blkDat[i][1][c])
+
+
+def getClosestBlockColor(color):
+    minDiff = float("inf")
+    minColIdx = -1
+    for c in range(len(blkDat)):
+        colDiff = abs(color[0] - blkDat[c][1][0]) + abs(color[1] - blkDat[c][1][1]) + abs(color[2] - blkDat[c][1][2])
+        if colDiff < minDiff:
+            minDiff = colDiff
+            minColIdx = c
+    return blkDat[minColIdx]
+
+
 class ImageProcessor:
     def __init__(self):
-        self.image = Image.open(fr"images\raw\{fileName}.png", 'r')
+        self.image = Image.open(fr"images\raw\{fileName}.{fileExt}", 'r')
         self.rawPixels = self.image.load()  # object with tuple data of all pixels
         self.imageSize = self.image.size  # X and Y size of image
-        self.blkSize = 50  # side length of blocks
+        self.blkSize = blkSize  # side length of blocks
         self.processedPixels = []
         self.finalBlockWidth = self.imageSize[0] % self.blkSize  # actual width of rightmost block on every row
         self.finalRowHeight = self.imageSize[1] % self.blkSize  # actual height of every block on the bottom row
@@ -34,9 +84,10 @@ class ImageProcessor:
         calculates average colors in each block.
         does not store pixel data, lowering execution time.
         """
-        progress = 0
         totalPixels = self.imageSize[0] * self.imageSize[1]
-        loadingDisplay = 0
+        progressRaw = 0
+        progressPercentage = 0
+        progress = 0
         for y in range(self.imageSize[1]):
             col = -1
             for x in range(self.imageSize[0]):
@@ -53,11 +104,12 @@ class ImageProcessor:
                     self.processedPixels[-1][col][po] += currentPixel[po]
 
                 if loadingBar:  # ~25% performance impact. WIP due to floating point error.
-                    print(progress * 10 / totalPixels)
-                    progress += 1
-                    if ((progress * 10 / totalPixels) % 1) == 0:
-                        loadingDisplay += 10
-                        print(f"{loadingDisplay}%")
+                    if loadingBar:
+                        if progress == progressRaw:
+                            print(f"{progressPercentage}%")
+                            progressPercentage += 10
+                            progressRaw += round(totalPixels / 10)
+                        progress += 1
 
         self.__averageColors(self.finalRowHeight)  # average colors of blocks for the final row, given its height
 
@@ -124,29 +176,55 @@ class ImageProcessor:
         print(fr"Loaded from images\processed\{processedFileName}")
 
     def pixelateResult(self):
-        result = Image.new("RGB", self.imageSize)
+        row = -1
+        scaledSize = (math.ceil(self.imageSize[0] / self.blkSize), math.ceil(self.imageSize[1] / self.blkSize))
+        result = Image.new("RGB", scaledSize)
         self.rawPixels = result.load()
 
-        row = -1
-        for y in range(self.imageSize[1]):
+        for y in range(scaledSize[1]):
             col = -1
-            for x in range(self.imageSize[0]):
-                if (x % self.blkSize) == 0:
-                    col += 1
-                    if (y % self.blkSize) == 0:
-                        if x == 0:  # every new row of blocks
-                            row += 1
-                        # every new block
+            for x in range(scaledSize[0]):
+                col += 1
+                if x == 0:  # every new row of blocks
+                    row += 1
                 pixelColor = self.processedPixels[row][col]
-                self.rawPixels[x, y] = (int(pixelColor[0]), int(pixelColor[1]), int(pixelColor[2]))
+                self.rawPixels[x, y] = (round(float(pixelColor[0])), round(float(pixelColor[1])), round(float(pixelColor[2])))
 
         result.save(fr"images\result\{processedFileName}.png")
-
         print(fr"Saved result in images\result\{processedFileName}.png")
+
+    def minecraft(self):
+        result = Image.new("RGBA", (textureRes * math.ceil(self.imageSize[0] / self.blkSize), textureRes * math.ceil(self.imageSize[1] / self.blkSize)))
+        rawPixels = result.load()
+        totalPixels = len(self.processedPixels) * len(self.processedPixels[0])
+        progressRaw = 0
+        progressPercentage = 0
+        progress = 0
+        for row in range(len(self.processedPixels)):
+            for col in range(len(self.processedPixels[row])):
+                nearestBlkDat = getClosestBlockColor(self.processedPixels[row][col])
+                blkFile = Image.open(fr"images/raw/blockTextures\{nearestBlkDat[0]}")
+                blkFile = blkFile.convert("RGBA")
+                blkPixels = blkFile.load()
+                for x in range(textureRes):
+                    for y in range(textureRes):
+                        rawPixels[col * textureRes + x, row * textureRes + y] = blkPixels[x, y]  # pixel color at block position (x, y) here
+
+                if loadingBar:
+                    if progress == progressRaw:
+                        print(f"{progressPercentage}%")
+                        progressPercentage += 10
+                        progressRaw += round(totalPixels / 10)
+                    progress += 1
+
+        result.save(fr"images\result\{processedFileName}_mc.png")
+        print(fr"Saved result in images\result\{processedFileName}_mc.png")
 
 
 myImage = ImageProcessor()
 myImage.getColors()
 myImage.saveProcessedPixels()
 myImage.loadPixels()
-myImage.pixelateResult()
+# myImage.pixelateResult()
+loadBlocks()
+myImage.minecraft()
