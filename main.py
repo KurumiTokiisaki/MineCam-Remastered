@@ -2,11 +2,11 @@ import os
 import math
 from PIL import Image
 import cv2
-from PIL.ImageMath import imagemath_int
 
-loadingBar = True
+loadingBar = False
 fileExt = ""
 mode = "image"
+invertColors = True
 
 while True:
     try:
@@ -241,12 +241,13 @@ class ImageProcessor:
         elif mode == "video":
             result.save(fr"images\result\temp\{processedFileName}_mc_{cf}.png")  # delete this entire folder at the end of the program
             # print(fr"Saved result in temp\images\result\{processedFileName}_mc.png")
+        result.close()
 
 
 def getPixelData(imgObj):
     formattedPixelData = []
 
-    if str(type(imgObj)) == "<class 'PIL.JpegImagePlugin.JpegImageFile'>":
+    if mode == "image":
         unformattedPixelData = imgObj.load()
         xySize = imgObj.size
         for x in range(xySize[0]):
@@ -254,13 +255,18 @@ def getPixelData(imgObj):
             for y in range(xySize[1]):
                 formattedPixelData[-1].append(unformattedPixelData[x, y])
 
-    else:
+    elif mode == "video":
         unformattedPixelData = imgObj.tolist()
         for x in range(len(unformattedPixelData[0])):
             formattedPixelData.append([])
         for y in range(len(unformattedPixelData)):
             for x in range(len(unformattedPixelData[y])):
-                formattedPixelData[x].append(unformattedPixelData[y][x])
+                if not invertColors:
+                    formattedPixelData[x].append(unformattedPixelData[y][x])
+                else:
+                    formattedPixelData[x].append([])
+                    for rgb in range(1, 4):
+                        formattedPixelData[x][-1].append(unformattedPixelData[y][x][-rgb])
 
     return formattedPixelData
 
@@ -275,10 +281,11 @@ if mode == "image":
 elif mode == "video":
     myVideo = cv2.VideoCapture(fr"images\raw\{fileName}.{fileExt}")
     videoSize = [int(myVideo.get(cv2.CAP_PROP_FRAME_WIDTH)), int(myVideo.get(cv2.CAP_PROP_FRAME_HEIGHT))]
+    videoFramerate = myVideo.get(cv2.CAP_PROP_FPS)
     while True:
         try:
-            framerate = float(input(f"Enter a framerate less than or equal to {myVideo.get(cv2.CAP_PROP_FPS)}: "))
-            if framerate > myVideo.get(cv2.CAP_PROP_FPS):
+            framerate = float(input(f"Enter a framerate less than or equal to {videoFramerate}: "))
+            if framerate > videoFramerate:
                 print("Framerate can't be larger than that of the video's!")
             else:
                 break
@@ -297,7 +304,7 @@ elif mode == "video":
         currentFrameImageData = FormattedImage(getPixelData(frame))
         currentFrame = ImageProcessor(currentFrameImageData)
         currentFrame.blockProcess()
-        f += myVideo.get(cv2.CAP_PROP_FPS) / framerate
+        f += videoFramerate / framerate
         cf += 1
     myVideo.release()
 
