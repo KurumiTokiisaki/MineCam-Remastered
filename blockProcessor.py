@@ -18,7 +18,7 @@ def processMinecraftBlocks():
     processStorage.close()
 
 
-def averageBlockColor(path, naeem):
+def averageBlockColor(path, blockName):
     texture = Image.open(path)
     texture = texture.convert("RGBA")
     pixelDat = texture.load()
@@ -32,7 +32,7 @@ def averageBlockColor(path, naeem):
             for c in range(3):
                 avgColor[c] += pixelDat[x, y][c]
 
-    if (transparentPixels <= maxTransparentPixelsAmt) and ((naeem != "debug.png") and (naeem != "debug2.png")):
+    if (transparentPixels <= maxTransparentPixelsAmt) and ((blockName != "debug.png") and (blockName != "debug2.png")):
         for c in range(3):
             avgColor[c] /= div
             avgColor[c] = round(avgColor[c])
