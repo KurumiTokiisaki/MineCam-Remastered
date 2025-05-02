@@ -2,6 +2,7 @@ import os
 import math
 from PIL import Image
 import cv2
+import numpy as np
 
 loadingBar = False
 fileExt = ""
@@ -11,14 +12,14 @@ invertColors = True
 while True:
     try:
         fileList = "| "
-        for p in os.listdir(r"images\raw"):
+        for p in os.listdir(r"images/raw"):
             if not p.startswith("blockTextures"):
                 fileList += f"{p} | "
         print(fileList)
         fileName = input("Enter exact name of one of the files to open: ")
         fileExt = fileName.split('.')[1]
         fileName = fileName.split('.')[0]
-        temp = open(fr"images\raw\{fileName}.{fileExt}")
+        temp = open(fr"images/raw/{fileName}.{fileExt}")
         break
     except (FileNotFoundError, IndexError):
         print("File not found!")
@@ -29,7 +30,7 @@ if (fileExt == "mp4") or (fileExt == "avi"):
 processedFileName = fileName
 saveFileName = f"{processedFileName}"
 blkDat = []
-textureRes = Image.open(r"images\raw\blockTextures\dirt.png").size[0]
+textureRes = Image.open(r"images/raw/blockTextures/dirt.png").size[0]
 
 while True:
     try:
@@ -93,8 +94,6 @@ class ImageProcessor:
 
     def blockProcess(self):
         self.getColors()
-        self.saveProcessedPixels()
-        self.loadPixels()
         self.minecraft()
 
     def getColors(self):
@@ -146,53 +145,6 @@ class ImageProcessor:
             prevRow[iSize][rgb] /= rowHeight * self.finalBlockWidth
         self.processedPixels[-1] = prevRow
 
-    def saveProcessedPixels(self):
-        pixelDatFile = open(fr"images\processed\{fileName}", 'w')
-        pixelDatFile.writelines(f"{self.imageSize[0]} {self.imageSize[1]}---")
-        pixelDatFile.writelines(f"{self.blkSize}---")
-        for row in self.processedPixels:
-            row = list(str(row))
-            row.pop(0)
-            row.pop(-1)
-            row = listToStr(row)
-            row = row.replace(' ', '')
-            row = row.replace("],", '-')
-            row = row.replace('[', '')
-            pixelDatFile.writelines(f"{row}")
-        pixelDatFile.close()
-        print(fr"Saved in images\processed\{fileName}")
-
-    def loadPixels(self):
-        pixelDatFile = open(fr'images\processed\{processedFileName}', 'r')
-        pixelDat = pixelDatFile.readline().split("---")
-        pixelDatFile.close()
-
-        imageSize = ["", ""]
-        xy = 0
-        for n in pixelDat[0]:
-            if n == ' ':
-                xy = 1
-                continue
-            imageSize[xy] += n
-        self.imageSize = (int(imageSize[0]), int(imageSize[1]))
-
-        self.blkSize = int(pixelDat[1])
-
-        rows = pixelDat[2].split(']')
-        rows.pop(-1)
-        for i in range(len(rows)):
-            rows[i] = rows[i].split('-')
-            for j in range(len(rows[i])):
-                rows[i][j] = rows[i][j].split(',')
-                for k in range(len(rows[i][j])):
-                    rows[i][j][k] = float(rows[i][j][k])
-        self.processedPixels = rows
-
-        self.finalBlockWidth = self.imageSize[0] % self.blkSize  # actual width of rightmost block on every row
-        self.finalRowHeight = self.imageSize[1] % self.blkSize  # actual height of every block on the bottom row
-
-        print(fr"Loaded from images\processed\{processedFileName}")
-
     def pixelateResult(self):
         row = -1
         scaledSize = (math.ceil(self.imageSize[0] / self.blkSize), math.ceil(self.imageSize[1] / self.blkSize))
@@ -208,8 +160,8 @@ class ImageProcessor:
                 pixelColor = self.processedPixels[row][col]
                 self.rawPixels[x, y] = (round(float(pixelColor[0])), round(float(pixelColor[1])), round(float(pixelColor[2])))
 
-        result.save(fr"images\result\{processedFileName}.png")
-        print(fr"Saved result in images\result\{processedFileName}.png")
+        result.save(fr"images/result/{processedFileName}.png")
+        print(fr"Saved result in images/result/{processedFileName}.png")
 
     def minecraft(self):
         result = Image.new("RGBA", (textureRes * math.ceil(self.imageSize[0] / self.blkSize), textureRes * math.ceil(self.imageSize[1] / self.blkSize)))
@@ -221,7 +173,7 @@ class ImageProcessor:
         for row in range(len(self.processedPixels)):
             for col in range(len(self.processedPixels[row])):
                 nearestBlkDat = getClosestBlockColor(self.processedPixels[row][col])
-                blkFile = Image.open(fr"images\raw\blockTextures\{nearestBlkDat[0]}")
+                blkFile = Image.open(fr"images/raw/blockTextures/{nearestBlkDat[0]}")
                 blkFile = blkFile.convert("RGBA")
                 blkPixels = blkFile.load()
                 for x in range(textureRes):
@@ -236,11 +188,11 @@ class ImageProcessor:
                     progress += 1
 
         if mode == "image":
-            result.save(fr"images\result\{processedFileName}_mc.png")
-            print(fr"Saved result in images\result\{processedFileName}_mc.png")
+            result.save(fr"images/result/{processedFileName}_mc.png")
+            print(fr"Saved result in images/result/{processedFileName}_mc.png")
         elif mode == "video":
-            result.save(fr"images\result\temp\{processedFileName}_mc_{cf}.png")  # delete this entire folder at the end of the program
-            # print(fr"Saved result in temp\images\result\{processedFileName}_mc.png")
+            result.save(fr"images/result/temp/{processedFileName}_mc_{cf}.png")  # delete this entire folder at the end of the program
+            print(fr"Saved result in temp/images/result/{processedFileName}_mc.png")
         result.close()
 
 
@@ -254,19 +206,10 @@ def getPixelData(imgObj):
             formattedPixelData.append([])
             for y in range(xySize[1]):
                 formattedPixelData[-1].append(unformattedPixelData[x, y])
+        formattedPixelData = np.array(formattedPixelData)
 
     elif mode == "video":
-        unformattedPixelData = imgObj.tolist()
-        for x in range(len(unformattedPixelData[0])):
-            formattedPixelData.append([])
-        for y in range(len(unformattedPixelData)):
-            for x in range(len(unformattedPixelData[y])):
-                if not invertColors:
-                    formattedPixelData[x].append(unformattedPixelData[y][x])
-                else:
-                    formattedPixelData[x].append([])
-                    for rgb in range(1, 4):
-                        formattedPixelData[x][-1].append(unformattedPixelData[y][x][-rgb])
+        formattedPixelData = imgObj.transpose()
 
     return formattedPixelData
 
@@ -274,12 +217,12 @@ def getPixelData(imgObj):
 loadBlocks()
 
 if mode == "image":
-    formattedImageData = FormattedImage(getPixelData(Image.open(fr"images\raw\{fileName}.{fileExt}", 'r')))
+    formattedImageData = FormattedImage(getPixelData(Image.open(fr"images/raw/{fileName}.{fileExt}", 'r')))
     myImage = ImageProcessor(formattedImageData)
     myImage.blockProcess()
 
 elif mode == "video":
-    myVideo = cv2.VideoCapture(fr"images\raw\{fileName}.{fileExt}")
+    myVideo = cv2.VideoCapture(fr"images/raw/{fileName}.{fileExt}")
     videoSize = [int(myVideo.get(cv2.CAP_PROP_FRAME_WIDTH)), int(myVideo.get(cv2.CAP_PROP_FRAME_HEIGHT))]
     videoFramerate = myVideo.get(cv2.CAP_PROP_FPS)
     while True:
@@ -310,7 +253,7 @@ elif mode == "video":
 
     imageNames = []
     imageIdx = []
-    for img in os.listdir(fr"images\result\temp"):
+    for img in os.listdir(fr"images/result/temp"):
         imageNames.append(os.fsdecode(img))
 
     for i in range(len(imageNames)):
@@ -335,12 +278,12 @@ elif mode == "video":
                 imageIdx[j] = tempIdx
                 imageNames[j] = tempImgName
 
-    codec = cv2.VideoWriter_fourcc(*'mp4v')
-    processedVideoSize = cv2.imread(fr"images\result\temp\{imageNames[0]}").shape
-    videoOutput = cv2.VideoWriter(fr"images\result\{processedFileName}_mc.mp4", codec, framerate, (processedVideoSize[1], processedVideoSize[0]))
+    codec = cv2.VideoWriter_fourcc(*"mp4v")
+    processedVideoSize = cv2.imread(fr"images/result/temp/{imageNames[0]}").shape
+    videoOutput = cv2.VideoWriter(fr"images/result/{processedFileName}_mc.mp4", codec, framerate, (processedVideoSize[1], processedVideoSize[0]))
     for imageName in imageNames:
-        videoOutput.write(cv2.imread(fr"images\result\temp\{imageName}"))  # convert every image to a cv2 image object
+        videoOutput.write(cv2.imread(fr"images/result/temp/{imageName}"))  # convert every image to a cv2 image object
     videoOutput.release()
 
-    # os.remove(r"images\result\temp")
-    # os.mkdir(r"images\result\temp")
+    # os.remove(r"images/result/temp")
+    # os.mkdir(r"images/result/temp")

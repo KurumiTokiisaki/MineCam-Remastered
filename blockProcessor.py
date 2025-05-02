@@ -1,7 +1,7 @@
 from PIL import Image
 import os
 
-textureRes = Image.open(r"images\raw\blockTextures\dirt.png").size[0]
+textureRes = Image.open(r"images/raw/blockTextures/dirt.png").size[0]
 transparencyTolerance = 200
 maxTransparentPixelsAmt = 0
 
@@ -12,7 +12,7 @@ def processMinecraftBlocks():
     for blk in os.listdir(blockDir):
         fName = os.fsdecode(blk)
         if fName.endswith(".png"):
-            tempResult = averageBlockColor(fr"images/raw/blockTextures\{fName}", fName)
+            tempResult = averageBlockColor(fr"images/raw/blockTextures/{fName}", fName)
             if tempResult != -1:
                 processStorage.writelines(f"{fName}--{tempResult}\n")
     processStorage.close()
