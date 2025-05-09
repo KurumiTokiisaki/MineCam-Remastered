@@ -6,7 +6,7 @@ import cv2
 loadingBar = False
 fileExt = ""
 mode = "image"
-invertColors = True
+invertColors = False
 
 while True:
     try:
@@ -91,6 +91,12 @@ class ImageProcessor:
         if self.finalRowHeight == 0:
             self.finalRowHeight = self.blkSize
 
+    def invertColors(self):
+        for x in range(len(self.rawPixels)):
+            for y in range(len(self.rawPixels[0])):
+                for rgb in range(len(self.rawPixels[x][y])):
+                    self.rawPixels[x][y][rgb] = 255 - self.rawPixels[x][y][rgb]
+
     def blockProcess(self):
         self.getColors()
         self.minecraft()
@@ -100,6 +106,8 @@ class ImageProcessor:
         calculates average colors in each block.
         does not store pixel data, lowering execution time.
         """
+        if invertColors:
+            self.invertColors()
         totalPixels = self.imageSize[0] * self.imageSize[1]
         progressRaw = 0
         progressPercentage = 0
@@ -115,7 +123,7 @@ class ImageProcessor:
                                 self.__averageColors(self.blkSize)
                             self.processedPixels.append([])
                         self.processedPixels[-1].append([0, 0, 0])  # every new block
-                currentPixel = self.rawPixels[x][y]
+                currentPixel = self.rawPixels[x][y]  # color data of current pixel
                 for po in range(3):
                     self.processedPixels[-1][col][po] += currentPixel[po]
 
