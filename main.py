@@ -2,7 +2,6 @@ import os
 import math
 from PIL import Image
 import cv2
-import numpy as np
 
 loadingBar = False
 fileExt = ""
@@ -120,13 +119,12 @@ class ImageProcessor:
                 for po in range(3):
                     self.processedPixels[-1][col][po] += currentPixel[po]
 
-                if loadingBar:  # ~25% performance impact. WIP due to a floating point error.
-                    if loadingBar:
-                        if progress == progressRaw:
-                            print(f"{progressPercentage}%")
-                            progressPercentage += 10
-                            progressRaw += round(totalPixels / 10)
-                        progress += 1
+                if loadingBar:
+                    if progress == progressRaw:
+                        print(f"{progressPercentage}%")
+                        progressPercentage += 10
+                        progressRaw += round(totalPixels / 10)
+                    progress += 1
 
         self.__averageColors(self.finalRowHeight)  # average colors of blocks for the final row, given its height
 
@@ -206,10 +204,15 @@ def getPixelData(imgObj):
             formattedPixelData.append([])
             for y in range(xySize[1]):
                 formattedPixelData[-1].append(unformattedPixelData[x, y])
-        formattedPixelData = np.array(formattedPixelData)
 
     elif mode == "video":
-        formattedPixelData = imgObj.transpose()
+        tempList = imgObj.tolist()
+        # swap axes in list
+        for y in range(len(tempList[0])):
+            formattedPixelData.append([])
+        for col in range(len(tempList)):
+            for row in range(len(tempList[0])):
+                formattedPixelData[row].append(tempList[col][row])
 
     return formattedPixelData
 
