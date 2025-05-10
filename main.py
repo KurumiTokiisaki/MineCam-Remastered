@@ -3,10 +3,11 @@ import math
 from PIL import Image
 import cv2
 
-loadingBar = False
+loadingBar = True
 fileExt = ""
 mode = "image"
 invertColors = False
+RGBtoBGR = False
 
 while True:
     try:
@@ -108,9 +109,16 @@ class ImageProcessor:
         """
         if invertColors:
             self.invertColors()
+        if RGBtoBGR:
+            for x in range(len(self.rawPixels)):
+                for y in range(len(self.rawPixels[0])):
+                    self.rawPixels[x][y] = [self.rawPixels[x][y][0], self.rawPixels[x][y][1], self.rawPixels[x][y][2]]  # convert pixel RGB data from tuple to list to make it mutable
+                    tempR = self.rawPixels[x][y][0]
+                    self.rawPixels[x][y][0] = self.rawPixels[x][y][2]
+                    self.rawPixels[x][y][2] = tempR
         totalPixels = self.imageSize[0] * self.imageSize[1]
         progressRaw = 0
-        progressPercentage = 0
+        progressPercentage = 1
         progress = 0
         for y in range(self.imageSize[1]):
             col = -1
@@ -129,10 +137,11 @@ class ImageProcessor:
 
                 if loadingBar:
                     if progress == progressRaw:
-                        print(f"{progressPercentage}%")
-                        progressPercentage += 10
-                        progressRaw += round(totalPixels / 10)
+                        print(f"\rColors averaged: {progressPercentage}%", end="")
+                        progressPercentage += 1
+                        progressRaw += round(totalPixels / 100)
                     progress += 1
+        print('')
 
         self.__averageColors(self.finalRowHeight)  # average colors of blocks for the final row, given its height
 
@@ -174,7 +183,7 @@ class ImageProcessor:
         rawPixels = result.load()
         totalPixels = len(self.processedPixels) * len(self.processedPixels[0])
         progressRaw = 0
-        progressPercentage = 0
+        progressPercentage = 1
         progress = 0
         for row in range(len(self.processedPixels)):
             for col in range(len(self.processedPixels[row])):
@@ -188,17 +197,18 @@ class ImageProcessor:
 
                 if loadingBar:
                     if progress == progressRaw:
-                        print(f"{progressPercentage}%")
-                        progressPercentage += 10
-                        progressRaw += round(totalPixels / 10)
+                        print(f"\rMinecraftification: {progressPercentage}%", end="")
+                        progressPercentage += 1
+                        progressRaw += round(totalPixels / 100)
                     progress += 1
+        print('')
 
         if mode == "image":
             result.save(fr"images/result/{processedFileName}_mc.png")
             print(fr"Saved result in images/result/{processedFileName}_mc.png")
         elif mode == "video":
             result.save(fr"images/result/temp/{processedFileName}_mc_{cf}.png")  # delete this entire folder at the end of the program
-            print(fr"Saved result in temp/images/result/{processedFileName}_mc.png")
+            print(fr"Saved result in temp/images/result/{processedFileName}_mc_{cf}.png")
         result.close()
 
 
@@ -248,6 +258,7 @@ elif mode == "video":
             continue
 
     # convert pixel data in every frame to a format recognized by ImageProcessor
+    totalFrames = math.floor(myVideo.get(cv2.CAP_PROP_FRAME_COUNT) * framerate / videoFramerate)
     f = 0
     cf = 0
     while True:
@@ -259,6 +270,8 @@ elif mode == "video":
         currentFrame = ImageProcessor(currentFrameImageData)
         currentFrame.blockProcess()
         f += videoFramerate / framerate
+        if loadingBar:
+            print(f"Current frame: {cf}/{totalFrames}")
         cf += 1
     myVideo.release()
 
@@ -296,5 +309,5 @@ elif mode == "video":
         videoOutput.write(cv2.imread(fr"images/result/temp/{imageName}"))  # convert every image to a cv2 image object
     videoOutput.release()
 
-    # os.remove(r"images/result/temp")
-    # os.mkdir(r"images/result/temp")
+    for tempImg in os.listdir("images/result/temp"):
+        os.remove(f"images/result/temp/{tempImg}")
